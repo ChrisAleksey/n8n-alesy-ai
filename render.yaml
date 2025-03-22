@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: n8n-alesy-ai
+    env: docker
+    repo: https://github.com/ChrisAleksey/n8n-alesy-ai.git
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /healthz
+    envVars:
+      - key: N8N_PROTOCOL
+        value: https
+      - key: N8N_HOST
+        value: n8n-alesy-ai.onrender.com
+      - key: N8N_PORT
+        value: 5678
+      - key: WEBHOOK_URL
+        sync: false
+      - key: N8N_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+    disk:
+      name: n8n-data
+      mountPath: /data
+      sizeGB: 10
