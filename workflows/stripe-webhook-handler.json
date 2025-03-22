@@ -1,0 +1,370 @@
+{
+  "name": "Stripe Webhook Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "stripe",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "=# Received Stripe Event\n\n**Type:** {{ $json.type }}\n**ID:** {{ $json.id }}\n**Created:** {{ $json.created }}"
+      },
+      "name": "Log Event",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "operation": "contains",
+              "value2": "customer.subscription"
+            }
+          ]
+        }
+      },
+      "name": "Is Subscription Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "value2": "customer.subscription.created"
+            }
+          ]
+        }
+      },
+      "name": "Is Subscription Created?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "value2": "customer.subscription.updated"
+            }
+          ]
+        }
+      },
+      "name": "Is Subscription Updated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        850,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/subscriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "subscription_id",
+              "value": "={{ $json.data.object.id }}"
+            },
+            {
+              "name": "customer_id",
+              "value": "={{ $json.data.object.customer }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.data.object.status }}"
+            },
+            {
+              "name": "plan_id",
+              "value": "={{ $json.data.object.plan.id }}"
+            },
+            {
+              "name": "current_period_end",
+              "value": "={{ $json.data.object.current_period_end }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ $now.toISOString() }}"
+            }
+          ]
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        }
+      },
+      "name": "Create Subscription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/subscriptions?subscription_id=eq.{{ $json.data.object.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "requestMethod": "PATCH",
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "status",
+              "value": "={{ $json.data.object.status }}"
+            },
+            {
+              "name": "current_period_end",
+              "value": "={{ $json.data.object.current_period_end }}"
+            },
+            {
+              "name": "updated_at",
+              "value": "={{ $now.toISOString() }}"
+            }
+          ]
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        }
+      },
+      "name": "Update Subscription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1050,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "value2": "invoice.payment_succeeded"
+            }
+          ]
+        }
+      },
+      "name": "Is Payment Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/payments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "payment_id",
+              "value": "={{ $json.data.object.id }}"
+            },
+            {
+              "name": "customer_id",
+              "value": "={{ $json.data.object.customer }}"
+            },
+            {
+              "name": "amount",
+              "value": "={{ $json.data.object.amount_paid / 100 }}"
+            },
+            {
+              "name": "currency",
+              "value": "={{ $json.data.object.currency }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.data.object.status }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ $now.toISOString() }}"
+            }
+          ]
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        }
+      },
+      "name": "Record Payment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        850,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Log Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Event": {
+      "main": [
+        [
+          {
+            "node": "Is Subscription Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Subscription Event?": {
+      "main": [
+        [
+          {
+            "node": "Is Subscription Created?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Payment Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Subscription Created?": {
+      "main": [
+        [
+          {
+            "node": "Create Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Subscription Updated?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Subscription Updated?": {
+      "main": [
+        [
+          {
+            "node": "Update Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Payment Succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Record Payment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "stripe-webhook-handler",
+  "meta": {
+    "instanceId": "alesy-ai-stripe-webhook-handler"
+  },
+  "tags": [
+    "stripe",
+    "webhook",
+    "payment",
+    "subscription"
+  ]
+}
